@@ -1,6 +1,6 @@
 # m1n1: A bootloader and experimentation playground for Apple Silicon
 
-Tested on MacBookAir10,1 (macOS Tahoe 26.6.2 25G83)
+Tested on MacBookAir10,1 with macOS Tahoe 26.6.2 (25G83)  
 Patched with LLM. Use at own risk.
 
 ## Building
