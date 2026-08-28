@@ -1901,9 +1901,36 @@ class HV(Reloadable):
             print("Done.")
             return a.tobytes()
 
+        def load_hook_t8103(data, segname, size, fileoff, dest):
+            if segname != "__TEXT_EXEC":
+                return data
+
+            # XNU 12377.161.14 writes s3_1_c15_c7_2 while bringing up the
+            # performance counters.  Firestorm/Icestorm does not implement
+            # that register, so the trapped write otherwise becomes an
+            # uncategorized exception before arm_init completes.  PMCR1_EL1
+            # is written with the same value immediately beforehand.
+            old = 0xd519f751  # msr s3_1_c15_c7_2, x17
+            new = 0xd503201f  # nop
+            a = array.array("I", data)
+            patched = 0
+
+            for index, opcode in enumerate(a):
+                if opcode != old:
+                    continue
+                off = fileoff + index * 4
+                print(f"Patching t8103 XNU PM register write at 0x{off:x}: "
+                      f"0x{old:x} -> nop")
+                a[index] = new
+                patched += 1
+
+            return a.tobytes() if patched else data
+
         #image = macho.prepare_image(load_hook)
         chip_id = self.u.adt["/chosen"].chip_id
-        if chip_id in (0x8122, 0x6030, 0x6031, 0x6032, 0x6034):
+        if chip_id == 0x8103:
+            image = macho.prepare_image(load_hook_t8103)
+        elif chip_id in (0x8122, 0x6030, 0x6031, 0x6032, 0x6034):
             image = macho.prepare_image(load_hook_m3)
         else:
             image = macho.prepare_image()
